@@ -1,6 +1,7 @@
 // 井inculde 《SP1。h》
 #include <SPI.h>
 #include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
 
 // #define Key1 PA13 // run
 // #define Key2 PA14 // trans
@@ -14,15 +15,17 @@ const int scanLimit = 7;
 int hours, minutes, seconds;
 //SoftwareSerial ssr(/*rx =*/PA1, /*tx =*/PA0);
 HardwareSerial Serial2(PA1, PA0);
-
+#define FPSerial Serial2
+DFRobotDFPlayerMini myDFPlayer;
+void printDetail(uint8_t type, int value);
 int secEta = 0; // 手动设置的倒计时时长
-
 void mp3Command(byte command, unsigned short data);
+
 void setup()
 {
 	Serial.begin(115200);
-	Serial2.begin(9600);
-	mp3Command(0x09, 1);
+	FPSerial.begin(9600);
+	// mp3Command(0x09, 1);
 	pinMode(runKey, INPUT);
 	pinMode(transKey, INPUT);
 	pinMode(setKey, INPUT);
@@ -40,6 +43,19 @@ void setup()
 	digitalWrite(slaveSelect, HIGH);
 	initdisplay();
 	Serial.println("LED Ready");
+
+	if (!myDFPlayer.begin(FPSerial, /*isACK = */ true, /*doReset = */ true))
+	{ // Use serial to communicate with mp3.
+		Serial.println(F("Unable to begin:"));
+		Serial.println(F("1.Please recheck the connection!"));
+		Serial.println(F("2.Please insert the SD card!"));
+		// while (true)
+			;
+	}
+	Serial.println(F("DFPlayer Mini online."));
+
+	myDFPlayer.setTimeOut(500); // Set serial communictaion time out 500ms
+	myDFPlayer.playMp3Folder(1);
 }
 void loop()
 {
@@ -72,7 +88,8 @@ void loop()
 }
 void alarm()
 {
-	mp3Command(0x03, 1);
+	//mp3Command(0x03, 1);
+	
 }
 void sendCommand(int command, int value)
 {
