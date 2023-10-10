@@ -13,7 +13,7 @@
 const int slaveSelect = PA4;
 const int scanLimit = 7;
 int hours, minutes, seconds;
-//SoftwareSerial ssr(/*rx =*/PA1, /*tx =*/PA0);
+// SoftwareSerial ssr(/*rx =*/PA1, /*tx =*/PA0);
 HardwareSerial Serial2(PA1, PA0);
 #define FPSerial Serial2
 DFRobotDFPlayerMini myDFPlayer;
@@ -50,13 +50,16 @@ void setup()
 		Serial.println(F("1.Please recheck the connection!"));
 		Serial.println(F("2.Please insert the SD card!"));
 		// while (true)
-			;
+		;
 	}
 	Serial.println(F("DFPlayer Mini online."));
 
 	myDFPlayer.setTimeOut(500); // Set serial communictaion time out 500ms
-	myDFPlayer.playMp3Folder(1);
+	myDFPlayer.disableLoop();	// disable loop.
+	myDFPlayer.volume(30);
 }
+
+static int alarmsAvailable[14] = {1000, 500, 400, 300, 200, 100, 70, 60, 50, 40, 30, 20, 10, 5};
 void loop()
 {
 	if (!digitalRead(setKey))
@@ -82,14 +85,26 @@ void loop()
 			{
 				alarm();
 			}
+			for (int i = 0; i < 14; i++)
+			{
+				if (secEta == alarmsAvailable[i]) // 当前剩余时间符合任意告警值
+				{
+					Serial.print("Alarm: ");
+					Serial.print(alarmsAvailable[i]);
+					Serial.print(" FileName: ");
+					Serial.println(14 - i);
+					myDFPlayer.playMp3Folder(14 - i);
+					break;
+				}
+			}
 			delay(1000);
 		}
 	}
 }
 void alarm()
 {
-	//mp3Command(0x03, 1);
-	
+	// mp3Command(0x03, 1);
+	myDFPlayer.playMp3Folder(0);
 }
 void sendCommand(int command, int value)
 {
@@ -131,7 +146,7 @@ void mp3Command(byte command, unsigned short data = 0x0000) // 控制mp3芯片�
 	buffer[9] = 0xef;
 
 	for (int i = 0; i < 10; i++)
-	Serial2.write(buffer[i]);
+		Serial2.write(buffer[i]);
 }
 
 void adjustTime() // 设定时间函数
