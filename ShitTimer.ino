@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
+#include <stdlib.h>
 
 // #define Key1 PA13 // run
 // #define Key2 PA14 // trans
@@ -22,6 +23,40 @@ void printDetail(uint8_t type, int value);
 int secEta = 0; // 手动设置的倒计时时长
 void mp3Command(byte command, unsigned short data);
 
+int brightness, volume;
+String config = "10;30;50,40,30,20,10,5,;";
+int needAlarmList[64];
+void parseConfig()
+{
+	String templist;
+	String temp = config;
+
+	brightness = atoi(temp.substring(0, temp.indexOf(";")).c_str());
+	Serial.print("brightness: ");
+	Serial.println(brightness);
+	temp = temp.substring(temp.indexOf(";") + 1);
+
+	volume = atoi(temp.substring(0, temp.indexOf(";")).c_str());
+	Serial.print("volume: ");
+	Serial.println(volume);
+	temp = temp.substring(temp.indexOf(";") + 1);
+
+	templist = temp.substring(0, temp.indexOf(";"));
+	Serial.print("need alarm list: ");
+	Serial.println(templist);
+	// for (int i = 0; templist.length() > 0;i++)
+	for (int i = 0; templist.indexOf(",") > 0; i++)
+	{
+		int tempvalue = atoi(templist.substring(0, temp.indexOf(",")).c_str());
+		Serial.print("value: ");
+		Serial.println(tempvalue);
+		needAlarmList[i] = tempvalue;
+		templist = templist.substring(templist.indexOf(",") + 1);
+		Serial.println(templist);
+	}
+
+	// Serial.println(temp);
+}
 void setup()
 {
 	Serial.begin(115200);
@@ -54,6 +89,8 @@ void setup()
 		;
 	}
 	Serial.println(F("DFPlayer Mini online."));
+
+	parseConfig();
 
 	myDFPlayer.setTimeOut(500); // Set serial communictaion time out 500ms
 	myDFPlayer.disableLoop();	// disable loop.
