@@ -58,6 +58,7 @@ void setup()
 	myDFPlayer.setTimeOut(500); // Set serial communictaion time out 500ms
 	myDFPlayer.disableLoop();	// disable loop.
 	myDFPlayer.volume(30);
+	displayTime(0);
 }
 
 static int alarmsAvailable[14] = {1000, 500, 400, 300, 200, 100, 70, 60, 50, 40, 30, 20, 10, 5};
