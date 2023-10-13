@@ -7,9 +7,10 @@
 // #define Key2 PA14 // trans
 // #define Key3 PB2  // set
 // #define Key4 PA0
-#define runKey PA13	  // run
+// SW5-PB2 SW3-PA13-DIO SW4-PA14-CLK
+#define runKey PB2	  // run
 #define transKey PA14 // trans
-#define setKey PB2	  // set
+#define setKey PA13	  // set
 const int slaveSelect = PA4;
 const int scanLimit = 7;
 int hours, minutes, seconds;
