@@ -3,6 +3,7 @@
 #include <SoftwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
 #include <stdlib.h>
+#include <EEPROM.h>
 
 // #define Key1 PA13 // run
 // #define Key2 PA14 // trans
@@ -24,21 +25,24 @@ int secEta = 0; // 手动设置的倒计时时长
 void mp3Command(byte command, unsigned short data);
 
 int brightness, volume;
-String config = "10;30;50,40,30,20,10,5,;";
+char config[128] = "10;30;50,40,30,20,10,5,;"; // max 127
 int needAlarmList[64];
-void parseConfig()
+void applyConfig()
 {
 	String templist;
-	String temp = config;
+	// String temp = config;
+	String temp(config);
 
 	brightness = atoi(temp.substring(0, temp.indexOf(";")).c_str());
 	Serial.print("brightness: ");
 	Serial.println(brightness);
+	sendCommand(10, brightness); // Intensity,15(max)
 	temp = temp.substring(temp.indexOf(";") + 1);
 
 	volume = atoi(temp.substring(0, temp.indexOf(";")).c_str());
 	Serial.print("volume: ");
 	Serial.println(volume);
+	myDFPlayer.volume(volume);
 	temp = temp.substring(temp.indexOf(";") + 1);
 
 	templist = temp.substring(0, temp.indexOf(";"));
@@ -48,34 +52,36 @@ void parseConfig()
 	for (int i = 0; templist.indexOf(",") > 0; i++)
 	{
 		int tempvalue = atoi(templist.substring(0, temp.indexOf(",")).c_str());
-		Serial.print("value: ");
-		Serial.println(tempvalue);
+		// Serial.print("value: ");
+		// Serial.println(tempvalue);
 		needAlarmList[i] = tempvalue;
 		templist = templist.substring(templist.indexOf(",") + 1);
-		Serial.println(templist);
+		// Serial.println(templist);
 	}
 
 	// Serial.println(temp);
 }
 void setup()
 {
-	Serial.begin(115200);
+	Serial.begin(9600);
+	Serial.println("Serial opened. ");
 	FPSerial.begin(9600);
 	// mp3Command(0x09, 1);
 	pinMode(runKey, INPUT);
 	pinMode(transKey, INPUT);
 	pinMode(setKey, INPUT);
 	// pinMode(Key4, INPUT);
+	EEPROM.begin();
 
 	SPI.begin();
 	pinMode(slaveSelect, OUTPUT);
 	// pinMode(beep, OUTPUT);
 	digitalWrite(slaveSelect, LOW);
-	sendCommand(12, 1);			// Shutdown,open
-	sendCommand(15, 0);			// DisplayTest,no
+	sendCommand(12, 1); // Shutdown,open
+	sendCommand(15, 0); // DisplayTest,no
 	sendCommand(10, 15);		// Intensity,15(max)
-	sendCommand(11, scanLimit); // ScanLimit,8-1=7
-	sendCommand(9, 255);		// DecodeMode,Code B decode for digits 7-0
+	sendCommand(11, scanLimit);	 // ScanLimit,8-1=7
+	sendCommand(9, 255);		 // DecodeMode,Code B decode for digits 7-0
 	digitalWrite(slaveSelect, HIGH);
 	initdisplay();
 	Serial.println("LED Ready");
@@ -85,20 +91,22 @@ void setup()
 		Serial.println(F("Unable to begin:"));
 		Serial.println(F("1.Please recheck the connection!"));
 		Serial.println(F("2.Please insert the SD card!"));
-		// while (true)
+		sendCommand(5, 11); // display "E1"
+		sendCommand(4, 1);
+		while (true)
 		;
 	}
 	Serial.println(F("DFPlayer Mini online."));
-
-	parseConfig();
-
+	myDFPlayer.volume(30);
 	myDFPlayer.setTimeOut(500); // Set serial communictaion time out 500ms
 	myDFPlayer.disableLoop();	// disable loop.
-	myDFPlayer.volume(30);
+
+	loadConfig();
+	applyConfig();
 	displayTime(0);
 }
 
-static int alarmsAvailable[14] = {1000, 500, 400, 300, 200, 100, 70, 60, 50, 40, 30, 20, 10, 5};
+// static int alarmsAvailable[14] = {1000, 500, 400, 300, 200, 100, 70, 60, 50, 40, 30, 20, 10, 5};
 void loop()
 {
 	if (!digitalRead(setKey))
@@ -124,21 +132,36 @@ void loop()
 			{
 				alarm();
 			}
-			for (int i = 0; i < 14; i++)
+			// for (int i = 0; i < 14; i++)
+			// {
+			// 	if (secEta == alarmsAvailable[i]) // 当前剩余时间符合任意告警值
+			// 	{
+			// 		Serial.print("Alarm: ");
+			// 		Serial.print(alarmsAvailable[i]);
+			// 		Serial.print(" FileName: ");
+			// 		Serial.println(14 - i);
+			// 		myDFPlayer.playMp3Folder(14 - i);
+			// 		break;
+			// 	}
+			// }
+			for (int i = 0; i < 64; i++)
 			{
-				if (secEta == alarmsAvailable[i]) // 当前剩余时间符合任意告警值
+				if (secEta == needAlarmList[i])
 				{
 					Serial.print("Alarm: ");
-					Serial.print(alarmsAvailable[i]);
-					Serial.print(" FileName: ");
-					Serial.println(14 - i);
-					myDFPlayer.playMp3Folder(14 - i);
+					Serial.print(needAlarmList[i]);
+					Serial.print("FileName: ");
+					Serial.println(needAlarmList[i]);
+					myDFPlayer.playMp3Folder(needAlarmList[i]);
 					break;
 				}
 			}
 			delay(1000);
 		}
 	}
+
+	if (Serial.available() > 0)
+		SerialEvent();
 }
 void alarm()
 {
@@ -322,4 +345,63 @@ void secToHms(int input) // 将秒数转换为时分秒并存储在 hours minute
 	Serial.println();
 
 	// return 0;
+}
+
+void loadConfig()
+{
+	// config = EEPROM.get_String(EEPROM.read(0), 1);
+	// uint8_t *p = (uint8_t *)(&config); // value为保存读取内容的变量
+	// for (int i = 0; i < 512; i++)
+	// {
+	// 	*(p + i) = EEPROM.read(i); // ADDR为保存地址
+	// }
+	EEPROM.get(0, config);
+	Serial.print("read config: ");
+	Serial.println(config);
+	return;
+}
+// char terminatorChar = ';';
+void SerialEvent()
+{
+	String command;
+	while (Serial.available() > 0)
+	{
+		command += char(Serial.read());
+		delay(10); // 延时函数用于等待字符完全进入缓冲区，可以尝试没有延时，输出结果会是什么
+	}
+	Serial.print(">");
+	Serial.println(command);
+	if (command == "load")
+		loadConfig();
+	if (command == "apply")
+		applyConfig();
+	else if (command == "edit")
+		editConfig();
+	else if (command == "help")
+	{
+		const String helpText = "Available commands: help edit load apply\r\nConfig format: intensity(0~15);volume(0~30);alarmTime1,[time2,[etc]];";
+		Serial.println(helpText);
+	}
+}
+void editConfig()
+{
+	Serial.println("pls. send config");
+	//config = "";
+	while (!Serial.available() > 0)
+		continue;
+	for (int i = 0; i < 127; i++)
+	{
+		if (Serial.available() > 0)
+			config[i] = char(Serial.read());
+		else
+			config[i] = 0x00;
+		delay(10);
+	}
+
+	if (config == "exit")
+		return;
+	Serial.print("edit config: ");
+	Serial.println(config);
+
+	EEPROM.put(0, config);
 }
