@@ -77,11 +77,11 @@ void setup()
 	pinMode(slaveSelect, OUTPUT);
 	// pinMode(beep, OUTPUT);
 	digitalWrite(slaveSelect, LOW);
-	sendCommand(12, 1); // Shutdown,open
-	sendCommand(15, 0); // DisplayTest,no
-	sendCommand(10, 15);		// Intensity,15(max)
-	sendCommand(11, scanLimit);	 // ScanLimit,8-1=7
-	sendCommand(9, 255);		 // DecodeMode,Code B decode for digits 7-0
+	sendCommand(12, 1);	 // Shutdown,open
+	sendCommand(15, 0);	 // DisplayTest,no
+	sendCommand(10, 15); // Intensity,15(max)
+	sendCommand(11, 7);	 // ScanLimit,8-1=7
+	sendCommand(9, 255); // DecodeMode,Code B decode for digits 7-0
 	digitalWrite(slaveSelect, HIGH);
 	initdisplay();
 	Serial.println("LED Ready");
@@ -91,10 +91,9 @@ void setup()
 		Serial.println(F("Unable to begin:"));
 		Serial.println(F("1.Please recheck the connection!"));
 		Serial.println(F("2.Please insert the SD card!"));
-		sendCommand(5, 11); // display "E1"
-		sendCommand(4, 1);
+		displayErrorcode(1);
 		while (true)
-		;
+			;
 	}
 	Serial.println(F("DFPlayer Mini online."));
 	myDFPlayer.volume(30);
@@ -106,7 +105,15 @@ void setup()
 	displayTime(0);
 }
 
-// static int alarmsAvailable[14] = {1000, 500, 400, 300, 200, 100, 70, 60, 50, 40, 30, 20, 10, 5};
+void displayErrorcode(int code)
+{
+	initdisplay();
+	sendCommand(5, 11);
+	sendCommand(4, code); // display
+	Serial.print("Errorcode: ");
+	Serial.println(code);
+}
+
 void loop()
 {
 	if (!digitalRead(setKey))
@@ -132,18 +139,6 @@ void loop()
 			{
 				alarm();
 			}
-			// for (int i = 0; i < 14; i++)
-			// {
-			// 	if (secEta == alarmsAvailable[i]) // 当前剩余时间符合任意告警值
-			// 	{
-			// 		Serial.print("Alarm: ");
-			// 		Serial.print(alarmsAvailable[i]);
-			// 		Serial.print(" FileName: ");
-			// 		Serial.println(14 - i);
-			// 		myDFPlayer.playMp3Folder(14 - i);
-			// 		break;
-			// 	}
-			// }
 			for (int i = 0; i < 64; i++)
 			{
 				if (secEta == needAlarmList[i])
@@ -360,7 +355,7 @@ void loadConfig()
 	Serial.println(config);
 	return;
 }
-// char terminatorChar = ';';
+
 void SerialEvent()
 {
 	String command;
@@ -383,10 +378,11 @@ void SerialEvent()
 		Serial.println(helpText);
 	}
 }
+
 void editConfig()
 {
 	Serial.println("pls. send config");
-	//config = "";
+	// config = "";
 	while (!Serial.available() > 0)
 		continue;
 	for (int i = 0; i < 127; i++)
